@@ -133,7 +133,7 @@ export default function Dashboard() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                         {portfolio?.weights ? Object.entries(portfolio.weights).map(([ticker, weight]: any) => (
                             <div key={ticker} className="bg-black/40 border border-white/5 p-4 rounded-xl flex flex-col items-center justify-center relative overflow-hidden group h-32">
-                                <div className="absolute bottom-0 left-0 w-full bg-blue-500/20 transition-all duration-1000 ease-out" style={{ height: \`\${weight * 500}%\` }} />
+                                <div className="absolute bottom-0 left-0 w-full bg-blue-500/20 transition-all duration-1000 ease-out" style={{ height: (weight * 500) + '%' }} />
                                 <span className="text-slate-400 text-sm z-10 mb-1">{ticker}</span>
                                 <span className="text-2xl font-bold z-10 text-white">{(weight * 100).toFixed(2)}%</span>
                             </div>

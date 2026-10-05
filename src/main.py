@@ -42,8 +42,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 5. Stream to frontend instantly
                     await websocket.send_json({"status": "new_event", "data": final_output})
             
-            # Wait a few seconds before polling again to simulate live feed
-            await asyncio.sleep(5)
+            # Wait only 1.5 seconds to simulate high-frequency trading terminal speed!
+            await asyncio.sleep(1.5)
             
     except WebSocketDisconnect:
         print("Client disconnected normally.")
