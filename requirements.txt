@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+websockets
+pydantic
+transformers
+torch
+requests
+aiohttp
+python-dotenv
