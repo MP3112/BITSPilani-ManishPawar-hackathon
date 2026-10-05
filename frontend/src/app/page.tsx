@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { Activity, AlertTriangle, TrendingUp, TrendingDown, Cpu, Volume2, VolumeX } from 'lucide-react';
+import { Activity, AlertTriangle, TrendingUp, TrendingDown, Cpu, Volume2, VolumeX, Database, ShieldAlert, DollarSign } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-export default function Dashboard() {
+export default function ProfessionalDashboard() {
   const [messages, setMessages] = useState<any[]>([]);
   const [portfolio, setPortfolio] = useState<any>(null);
   const [isCritical, setIsCritical] = useState(false);
@@ -11,22 +12,16 @@ export default function Dashboard() {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    // Connect to FastAPI WebSocket
     const ws = new WebSocket("ws://127.0.0.1:8000/ws/stream");
     wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("Connected to PulseFin AI Engine");
-    };
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.status === "new_event") {
-        setMessages((prev) => [data.data, ...prev].slice(0, 10)); // Keep last 10
+        setMessages((prev) => [data.data, ...prev].slice(0, 50)); 
         
         if (data.data.portfolio_state) {
             setPortfolio(data.data.portfolio_state);
-            
             if (data.data.portfolio_state.mode === "critical_stress") {
                 triggerCriticalAlert(data.data.risk_signal.event_type);
             } else {
@@ -36,149 +31,193 @@ export default function Dashboard() {
       }
     };
 
-    return () => {
-      ws.close();
-    };
+    return () => ws.close();
   }, [voiceEnabled]);
 
   const triggerCriticalAlert = (eventType: string) => {
       setIsCritical(true);
-      if (voiceEnabled && 'speechSynthesis' in window) {
-          // Check if already speaking to avoid overlap spam
-          if (!window.speechSynthesis.speaking) {
-              const text = `Warning. Critical ${eventType} event detected. Initiating portfolio stress test.`;
-              const msg = new SpeechSynthesisUtterance(text);
-              msg.rate = 1.0;
-              msg.pitch = 0.9;
-              window.speechSynthesis.speak(msg);
-          }
+      if (voiceEnabled && 'speechSynthesis' in window && !window.speechSynthesis.speaking) {
+          const text = `Critical Alert. ${eventType} detected. Activating portfolio defense protocols.`;
+          const msg = new SpeechSynthesisUtterance(text);
+          msg.rate = 1.1;
+          msg.pitch = 0.8;
+          window.speechSynthesis.speak(msg);
       }
   };
 
+  const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+
   return (
-    <div className={`min-h-screen p-4 md:p-8 transition-colors duration-1000 ${isCritical ? 'bg-red-950/90' : 'bg-slate-950'} text-white`}>
-      <header className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
-        <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                <Cpu className="text-blue-500" /> PulseFin <span className="text-sm font-normal text-slate-400 hidden md:inline">AI/NLP Risk Engine</span>
-            </h1>
-            <p className="text-slate-400 mt-1 text-sm">BITSPilani-ManishPawar-hackathon</p>
+    <div className={`min-h-screen p-4 font-sans transition-colors duration-1000 ${isCritical ? 'bg-[#2a0808]' : 'bg-[#0a0a0a]'} text-slate-200 text-sm`}>
+      {/* Top Navigation / Bloomberg Style Marquee */}
+      <header className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+        <div className="flex items-center gap-4">
+            <Cpu className="text-blue-500" size={24} />
+            <div>
+                <h1 className="text-xl font-bold tracking-tight text-white uppercase">PulseFin Terminal V2.0</h1>
+                <p className="text-xs text-slate-500 font-mono">Enterprise AI Risk & Portfolio Engine</p>
+            </div>
         </div>
-        <button 
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${voiceEnabled ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-        >
-            {voiceEnabled ? <Volume2 size={18}/> : <VolumeX size={18}/>}
-            <span className="hidden md:inline">{voiceEnabled ? "Voice Alerts On" : "Voice Alerts Off"}</span>
-        </button>
+        <div className="flex items-center gap-6">
+            <div className="flex gap-4 font-mono text-xs">
+                <span className="flex items-center gap-1 text-emerald-400"><Activity size={14}/> SYSTEM ONLINE</span>
+                <span className="flex items-center gap-1 text-blue-400"><Database size={14}/> LIVE DATA</span>
+            </div>
+            <button onClick={() => setVoiceEnabled(!voiceEnabled)} className="text-xs border border-white/20 px-3 py-1.5 rounded hover:bg-white/10 flex items-center gap-2">
+                {voiceEnabled ? <Volume2 size={14}/> : <VolumeX size={14}/>} {voiceEnabled ? "AUDIO ON" : "AUDIO MUTED"}
+            </button>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-12 gap-4">
         
-        {/* Left Column: Live NLP Feed */}
-        <div className="xl:col-span-1 space-y-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Activity size={20} className="text-blue-400 animate-pulse"/> Live Risk Signals
-            </h2>
-            <div className="space-y-4 h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                {messages.length === 0 ? (
-                    <div className="p-8 bg-white/5 rounded-xl text-slate-400 text-center border border-white/10 border-dashed">
-                        Waiting for live WebSocket stream...
-                    </div>
-                ) : (
-                    messages.map((msg, idx) => (
-                        <div key={idx} className={`p-5 rounded-xl border transition-all duration-500 ${msg.risk_signal.impact_score >= 8 ? 'bg-red-900/20 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-white/5 border-white/10 hover:border-white/20'}`}>
-                            <div className="flex justify-between items-start mb-3">
-                                <span className={`text-xs font-bold px-2 py-1 rounded flex items-center gap-1 ${msg.risk_signal.sentiment_label === 'negative' ? 'bg-red-500/20 text-red-400' : msg.risk_signal.sentiment_label === 'positive' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
-                                    {msg.risk_signal.sentiment_label === 'negative' ? <TrendingDown size={12}/> : <TrendingUp size={12}/>}
-                                    {msg.risk_signal.sentiment_score.toFixed(2)} {msg.risk_signal.sentiment_label.toUpperCase()}
-                                </span>
-                                <span className="text-xs text-slate-400 text-right w-32 truncate">{msg.source}</span>
-                            </div>
-                            <p className="text-sm font-medium mb-4 leading-relaxed text-slate-200">{msg.risk_signal.text}</p>
-                            
-                            <div className="mt-4 pt-4 border-t border-white/10">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs text-slate-400">Event Class: <strong className="text-white">{msg.risk_signal.event_type}</strong></span>
-                                    <span className="text-xs text-slate-400">Impact: <strong className={msg.risk_signal.impact_score >= 8 ? 'text-red-400 text-base font-bold' : 'text-white'}>{msg.risk_signal.impact_score}/10</strong></span>
-                                </div>
-                                <div className="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg mt-3">
-                                    <p className="text-xs text-blue-200 leading-relaxed">
-                                        <strong className="text-blue-400 font-semibold block mb-1">Agentic XAI Rationale: </strong>
-                                        {msg.risk_signal.rationale}
-                                    </p>
-                                </div>
-                            </div>
+        {/* Left Column: Dense Data Feed (3 cols) */}
+        <div className="col-span-12 lg:col-span-3 border border-white/10 bg-[#111111] rounded-lg overflow-hidden flex flex-col h-[85vh]">
+            <div className="bg-[#1a1a1a] p-3 border-b border-white/10 flex justify-between items-center">
+                <h2 className="font-semibold text-xs uppercase text-slate-300">Global Data Ingestion</h2>
+                <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">HUGGINGFACE NLP</span>
+            </div>
+            <div className="overflow-y-auto flex-1 p-2 space-y-2 custom-scrollbar">
+                {messages.length === 0 ? <p className="text-center text-slate-500 mt-10">Awaiting Signal...</p> : messages.map((msg, idx) => (
+                    <div key={idx} className={`p-3 rounded border text-xs ${msg.risk_signal.impact_score >= 8 ? 'bg-red-950/40 border-red-500/50' : 'bg-[#1a1a1a] border-white/5'}`}>
+                        <div className="flex justify-between items-center mb-2 font-mono text-[10px] text-slate-500">
+                            <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                            <span className={msg.risk_signal.impact_score >= 8 ? 'text-red-400 font-bold' : ''}>IMP: {msg.risk_signal.impact_score}/10</span>
                         </div>
-                    ))
+                        <p className="mb-2 text-slate-300 leading-relaxed">{msg.risk_signal.text}</p>
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/10">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${msg.risk_signal.sentiment_label === 'negative' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                {msg.risk_signal.sentiment_score.toFixed(2)} {msg.risk_signal.sentiment_label.toUpperCase()}
+                            </span>
+                            <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">{msg.risk_signal.event_type}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        {/* Center Column: Charts & Analytics (6 cols) */}
+        <div className="col-span-12 lg:col-span-6 flex flex-col gap-4">
+            
+            {/* Massive Area Chart for Portfolio Value */}
+            <div className={`border rounded-lg bg-[#111111] p-4 transition-all duration-300 ${isCritical ? 'border-red-500/50 animate-[shake_0.5s_ease-in-out_infinite]' : 'border-white/10'}`}>
+                <div className="flex justify-between items-end mb-4">
+                    <div>
+                        <h2 className="text-xs uppercase text-slate-400 font-semibold mb-1">Total AUM (Live Market)</h2>
+                        <div className={`text-3xl font-mono font-bold ${isCritical ? 'text-red-500' : 'text-white'}`}>
+                            {portfolio?.total_value ? formatCurrency(portfolio.total_value) : "$0.00"}
+                        </div>
+                    </div>
+                    {isCritical && <div className="text-red-500 flex items-center gap-2 font-bold bg-red-500/10 px-3 py-1 rounded animate-pulse"><ShieldAlert size={18}/> STRESS TEST ACTIVE</div>}
+                </div>
+                
+                <div className="h-[300px] w-full">
+                    {portfolio?.history && portfolio.history.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={portfolio.history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={isCritical ? "#ef4444" : "#3b82f6"} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={isCritical ? "#ef4444" : "#3b82f6"} stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                                <XAxis dataKey="time" stroke="#555" fontSize={10} tickMargin={10} />
+                                <YAxis domain={['auto', 'auto']} stroke="#555" fontSize={10} tickFormatter={(value) => "$" + (value/1000000).toFixed(1) + "M"} width={60} />
+                                <Tooltip contentStyle={{ backgroundColor: '#111', borderColor: '#333', fontSize: '12px' }} />
+                                <Area type="monotone" dataKey="value" stroke={isCritical ? "#ef4444" : "#3b82f6"} strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-600">Initializing chart data...</div>
+                    )}
+                </div>
+            </div>
+
+            {/* XAI Rationale Panel */}
+            <div className="border border-white/10 bg-[#111111] rounded-lg p-4 flex-1">
+                <h2 className="text-xs uppercase text-slate-400 font-semibold mb-3 border-b border-white/10 pb-2 flex justify-between">
+                    <span>LLM Agentic Rationale (XAI)</span>
+                    <span className="text-[10px] text-emerald-400">zero-shot-classification</span>
+                </h2>
+                {messages.length > 0 ? (
+                    <p className="text-sm text-slate-300 leading-relaxed font-serif">
+                        "{messages[0].risk_signal.rationale}"
+                    </p>
+                ) : (
+                    <p className="text-slate-600 text-sm">No analysis generated yet.</p>
                 )}
             </div>
         </div>
 
-        {/* Right Column: Portfolio Orchestrator */}
-        <div className="xl:col-span-2">
-            <h2 className="text-xl font-semibold mb-4">Unified Portfolio Engine</h2>
+        {/* Right Column: Holdings & Stress Test (3 cols) */}
+        <div className="col-span-12 lg:col-span-3 flex flex-col gap-4">
             
-            {/* The Flash Crash Shake Animation Wrapper */}
-            <div className={`transition-all duration-300 ${isCritical ? 'animate-[shake_0.5s_ease-in-out_infinite] scale-[0.98]' : ''}`}>
-                
-                {/* Module A: Tactical Rebalancing */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
-                    <h3 className="text-lg font-medium mb-8 text-slate-300 flex justify-between items-center">
-                        <span>Module A: Tactical Rebalancing</span>
-                        {portfolio?.mode === 'normal' && <span className="text-emerald-400 text-sm flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full"><Activity size={16}/> Active</span>}
-                        {portfolio?.mode === 'critical_stress' && <span className="text-red-400 text-sm flex items-center gap-2 bg-red-500/10 px-3 py-1 rounded-full"><AlertTriangle size={16}/> Halted</span>}
-                    </h3>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                        {portfolio?.weights ? Object.entries(portfolio.weights).map(([ticker, weight]: any) => (
-                            <div key={ticker} className="bg-black/40 border border-white/5 p-4 rounded-xl flex flex-col items-center justify-center relative overflow-hidden group h-32">
-                                <div className="absolute bottom-0 left-0 w-full bg-blue-500/20 transition-all duration-1000 ease-out" style={{ height: (weight * 500) + '%' }} />
-                                <span className="text-slate-400 text-sm z-10 mb-1">{ticker}</span>
-                                <span className="text-2xl font-bold z-10 text-white">{(weight * 100).toFixed(2)}%</span>
-                            </div>
-                        )) : (
-                            <div className="col-span-full text-center text-slate-500 py-12">Waiting for portfolio state...</div>
-                        )}
+            {/* Holdings Table */}
+            <div className="border border-white/10 bg-[#111111] rounded-lg overflow-hidden flex-1">
+                <div className="bg-[#1a1a1a] p-3 border-b border-white/10">
+                    <h2 className="font-semibold text-xs uppercase text-slate-300">Live Holdings (Module A)</h2>
+                </div>
+                <div className="p-0 overflow-y-auto max-h-[400px]">
+                    <table className="w-full text-left text-xs">
+                        <thead className="bg-[#151515] text-slate-500 sticky top-0">
+                            <tr>
+                                <th className="p-2 font-normal">Asset</th>
+                                <th className="p-2 font-normal text-right">Price</th>
+                                <th className="p-2 font-normal text-right">Weight</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 font-mono">
+                            {portfolio?.weights ? Object.entries(portfolio.weights).sort((a:any, b:any) => b[1] - a[1]).map(([ticker, weight]: any) => (
+                                <tr key={ticker} className="hover:bg-white/5 transition-colors">
+                                    <td className="p-2 font-bold text-slate-200">{ticker}</td>
+                                    <td className="p-2 text-right text-slate-400">${portfolio.live_prices[ticker]?.toFixed(2)}</td>
+                                    <td className="p-2 text-right text-blue-400">{(weight * 100).toFixed(2)}%</td>
+                                </tr>
+                            )) : (
+                                <tr><td colSpan={3} className="text-center p-4 text-slate-600">Loading...</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Stress Test Module */}
+            <div className={`border rounded-lg p-4 ${isCritical ? 'bg-red-950/30 border-red-500/50' : 'bg-[#111111] border-white/10'}`}>
+                <h2 className="text-xs uppercase text-slate-400 font-semibold mb-3 border-b border-white/10 pb-2 flex justify-between">
+                    <span>Module B: CVaR Stress Test</span>
+                    <span className="text-[10px] text-orange-400">Rockafellar-Uryasev</span>
+                </h2>
+                {portfolio?.stress_test ? (
+                    <div className="space-y-3 font-mono text-xs">
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">T-0 Baseline:</span>
+                            <span className="text-slate-300">{formatCurrency(portfolio.stress_test.baseline_value)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">T+1 Stressed:</span>
+                            <span className="text-red-400">{formatCurrency(portfolio.stress_test.stressed_value)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-white/10 pt-2">
+                            <span className="text-slate-500">VaR (95%):</span>
+                            <span className="text-orange-400">{portfolio.stress_test.var_95}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">CVaR (95%):</span>
+                            <span className="text-red-400 font-bold">{portfolio.stress_test.cvar_95}</span>
+                        </div>
+                        <div className="bg-red-500/10 p-2 rounded border border-red-500/20 mt-2">
+                            <div className="text-red-400 text-[10px] uppercase mb-1">CVaR $ Loss (Expected Shortfall)</div>
+                            <div className="text-lg font-bold text-red-500">-{formatCurrency(portfolio.stress_test.cvar_dollar_loss)}</div>
+                        </div>
+                        <div className="bg-red-500/10 p-2 rounded border border-red-500/20">
+                            <div className="text-red-400 text-[10px] uppercase mb-1">Simulated P&L Loss</div>
+                            <div className="text-lg font-bold text-red-500">-{formatCurrency(portfolio.stress_test.simulated_loss)}</div>
+                        </div>
                     </div>
-                </div>
-
-                {/* Module B: Strategic Stress Testing */}
-                <div className={`rounded-2xl p-6 border transition-all duration-700 ${portfolio?.mode === 'critical_stress' ? 'bg-red-950/80 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.2)]' : 'bg-white/5 border-white/10'}`}>
-                    <h3 className="text-lg font-medium mb-2 flex items-center gap-3">
-                        Module B: Strategic Stress Test
-                        {portfolio?.mode === 'critical_stress' && <span className="px-3 py-1 bg-red-500 text-white text-xs rounded-full font-bold animate-pulse">CRITICAL EVENT TRIGGERED</span>}
-                    </h3>
-                    <p className="text-slate-400 text-sm mb-6">Evaluates macroeconomic shocks against a synthetic $100M portfolio.</p>
-
-                    {portfolio?.stress_test ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="p-5 bg-black/40 rounded-xl border border-white/5">
-                                <div className="text-slate-400 text-sm mb-2">Baseline Value</div>
-                                <div className="text-3xl font-mono text-slate-200">${portfolio.stress_test.baseline_value.toLocaleString()}</div>
-                            </div>
-                            <div className="p-5 bg-black/40 rounded-xl border border-white/5 relative overflow-hidden">
-                                <div className="absolute inset-0 bg-red-500/5" />
-                                <div className="relative z-10">
-                                    <div className="text-slate-400 text-sm mb-2">Stressed Value (T+1)</div>
-                                    <div className="text-3xl font-mono text-red-400">${portfolio.stress_test.stressed_value.toLocaleString()}</div>
-                                </div>
-                            </div>
-                            <div className="p-5 bg-red-950/50 rounded-xl border border-red-500/50 shadow-[inset_0_0_20px_rgba(239,68,68,0.2)]">
-                                <div className="text-red-200 text-sm mb-2">Simulated Loss ({portfolio.stress_test.shock_applied})</div>
-                                <div className="text-4xl font-mono text-red-500 font-bold flex items-center gap-2">
-                                    <TrendingDown size={28}/>
-                                    ${portfolio.stress_test.simulated_loss.toLocaleString()}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center text-slate-500 py-12 border border-dashed border-white/10 rounded-xl">
-                            No critical events detected yet. Monitoring...
-                        </div>
-                    )}
-                </div>
-
+                ) : (
+                    <div className="text-center text-slate-600 py-6 text-xs">Awaiting critical catalyst...</div>
+                )}
             </div>
         </div>
       </div>
