@@ -1,0 +1,26 @@
+[
+  {
+    "id": "demo-001",
+    "timestamp": "2026-10-05T09:00:00Z",
+    "source": "Financial News",
+    "text": "Tech companies report stable earnings for Q3, matching analyst expectations."
+  },
+  {
+    "id": "demo-002",
+    "timestamp": "2026-10-05T09:15:00Z",
+    "source": "Reddit",
+    "text": "Rumors circulating about potential supply chain disruptions in Southeast Asia, but nothing confirmed yet."
+  },
+  {
+    "id": "demo-003",
+    "timestamp": "2026-10-05T09:30:00Z",
+    "source": "Financial News",
+    "text": "BREAKING: Global supply chains severely disrupted following unexpected geopolitical conflict in the South China Sea. Shipping routes halted indefinitely."
+  },
+  {
+    "id": "demo-004",
+    "timestamp": "2026-10-05T09:45:00Z",
+    "source": "Financial News",
+    "text": "Federal Reserve announces emergency meeting to discuss unexpected inflation spike and potential immediate rate hike of 50 bps."
+  }
+]
