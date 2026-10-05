@@ -2,10 +2,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import asyncio
 from src.ingestion import DataIngestor
 from src.nlp_engine import RiskEngine
+from src.portfolio import PortfolioManager
 
 app = FastAPI(title="PulseFin Risk Engine API")
 ingestor = DataIngestor()
 risk_engine = RiskEngine()
+portfolio_manager = PortfolioManager()
 
 @app.get("/")
 async def root():
@@ -15,7 +17,6 @@ async def root():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
-        # Loop to simulate streaming data ingestion
         while True:
             # 1. Fetch live or demo data
             raw_data = await ingestor.fetch_live_data()
@@ -27,15 +28,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 2. Process through NLP Engine
                     processed_signal = risk_engine.process_text(item["text"], item["source"])
                     
-                    # 3. Combine with original metadata
+                    # 3. Process through Downstream Financial Logic (Module A + B)
+                    portfolio_update = portfolio_manager.process_signal(processed_signal)
+                    
+                    # 4. Combine everything into the ultimate 'God-Tier' payload
                     final_output = {
                         "id": item["id"],
                         "timestamp": item["timestamp"],
-                        **processed_signal
+                        "risk_signal": processed_signal,
+                        "portfolio_state": portfolio_update
                     }
                     
-                    # 4. Stream to frontend
-                    await websocket.send_json({"status": "new_signal", "data": final_output})
+                    # 5. Stream to frontend instantly
+                    await websocket.send_json({"status": "new_event", "data": final_output})
             
             # Wait a few seconds before polling again to simulate live feed
             await asyncio.sleep(5)
