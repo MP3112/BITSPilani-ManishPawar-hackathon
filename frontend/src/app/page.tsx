@@ -139,14 +139,27 @@ export default function ProfessionalDashboard() {
 
   const handleSimulateFlashCrash = async () => {
       try {
-          await fetch('http://127.0.0.1:8000/trigger-doomsday', { method: 'POST' });
+          const res = await fetch('http://127.0.0.1:8000/trigger-doomsday', { method: 'POST' });
+          const json = await res.json();
+          const data = json.data;
+          setMessages((prev) => [data, ...prev].slice(0, 50)); 
+          setPortfolio(data.portfolio_state);
+          triggerCriticalAlert("Systemic Flash Crash");
       } catch (e) {
           console.error("Failed to trigger doomsday", e);
       }
   };
 
+  const toggleEmergencyMode = () => {
+      if (!isCritical) {
+          triggerCriticalAlert("Manual DEFCON-1 Override");
+      } else {
+          setIsCritical(false);
+      }
+  };
+
   return (
-    <div className={`min-h-screen p-4 font-sans transition-colors duration-1000 relative overflow-hidden ${isCritical ? 'bg-[#150202]' : 'bg-[#050505]'} text-slate-200 text-sm`}>
+    <div className={`min-h-screen p-4 font-sans transition-colors duration-700 relative overflow-hidden ${isCritical ? 'bg-[#180303]' : 'bg-[#050505]'} text-slate-200 text-sm`}>
       {/* Command Palette Overlay */}
       {isCommandOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[15vh]">
@@ -158,6 +171,10 @@ export default function ProfessionalDashboard() {
             </div>
             <div className="p-2">
                 <div className="px-3 py-2 text-[10px] uppercase text-slate-500 font-bold">Suggested Commands</div>
+                <div onClick={handleSimulateFlashCrash} className="px-3 py-2.5 hover:bg-red-950/40 rounded-lg cursor-pointer flex justify-between items-center group transition-colors">
+                    <span className="flex items-center gap-3 text-red-400"><ShieldAlert size={14} className="text-red-500"/> Trigger Doomsday Flash Crash</span>
+                    <span className="text-[10px] opacity-0 group-hover:opacity-100 text-red-400 transition-opacity">Execute</span>
+                </div>
                 <div onClick={runMonteCarlo} className="px-3 py-2.5 hover:bg-white/5 rounded-lg cursor-pointer flex justify-between items-center group transition-colors">
                     <span className="flex items-center gap-3 text-slate-300"><Cpu size={14} className="text-blue-400"/> Run Monte Carlo Simulation (10,000 paths)</span>
                     <span className="text-[10px] opacity-0 group-hover:opacity-100 text-slate-500 transition-opacity">Execute</span>
@@ -176,34 +193,75 @@ export default function ProfessionalDashboard() {
       )}
 
       {/* Cinematic Vignette Overlay for DEFCON 1 */}
-      <div className={`pointer-events-none absolute inset-0 transition-opacity duration-1000 ${isCritical ? 'opacity-100 animate-pulse' : 'opacity-0'} z-0`} style={{ background: 'radial-gradient(circle, transparent 20%, rgba(220, 38, 38, 0.15) 80%, rgba(220, 38, 38, 0.4) 100%)' }}></div>
+      <div 
+        className={`pointer-events-none fixed inset-0 transition-opacity duration-700 ${isCritical ? 'opacity-100 animate-pulse' : 'opacity-0'} z-0`} 
+        style={{ 
+          background: 'radial-gradient(circle at center, rgba(160, 10, 10, 0.40) 0%, rgba(80, 0, 0, 0.75) 55%, rgba(20, 0, 0, 0.98) 100%)',
+          boxShadow: isCritical ? 'inset 0 0 100px rgba(239, 68, 68, 0.7)' : 'none'
+        }}
+      ></div>
       
       <div className="relative z-10 max-w-[1600px] mx-auto">
+      {/* DEFCON 1 Emergency Banner when Crash is Triggered */}
+      {isCritical && (
+        <div className="mb-4 bg-gradient-to-r from-red-950 via-red-900 to-red-950 border-2 border-red-500 rounded-lg p-3 text-center text-red-100 font-mono font-bold tracking-wider text-xs md:text-sm animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.7)] flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-red-500 animate-ping inline-block"></span>
+            <span>🚨 DEFCON-1 ACTIVE: FLASH CRASH DETECTED — SYSTEMIC RISK PROTOCOL ENGAGED</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-red-500/30 border border-red-500 px-2 py-0.5 rounded text-[11px] text-red-200">
+              LOSS: {portfolio?.daily_pnl ? formatCurrency(portfolio.daily_pnl) : "-$18,450,000"}
+            </span>
+            <button 
+              onClick={() => setIsCritical(false)} 
+              className="bg-black/60 hover:bg-black border border-white/20 text-white text-[10px] px-2.5 py-1 rounded tracking-normal uppercase transition-colors"
+            >
+              Reset Normal
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Navigation / Bloomberg Style Marquee */}
       <header className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
         <div className="flex items-center gap-4">
-            <Cpu className="text-blue-500" size={24} />
+            <Cpu className={isCritical ? "text-red-500 animate-pulse" : "text-blue-500"} size={24} />
             <div>
                 <h1 className="text-xl font-bold tracking-tight text-white uppercase">PulseFin Terminal V2.0</h1>
                 <p className="text-xs text-slate-500 font-mono">Enterprise AI Risk & Portfolio Engine</p>
             </div>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 md:gap-4 flex-wrap">
             <button onClick={() => setIsCommandOpen(true)} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded text-xs text-slate-400 transition-colors">
-                <Search size={14}/> Search Commands <span className="bg-black/50 border border-white/20 px-1.5 rounded text-[10px] ml-1 tracking-widest">⌘K</span>
+                <Search size={14}/> Commands <span className="bg-black/50 border border-white/20 px-1.5 rounded text-[10px] ml-1 tracking-widest">⌘K</span>
             </button>
-            <div className="flex gap-4 font-mono text-xs">
-                <span className="flex items-center gap-1 text-emerald-400"><Activity size={14}/> SYSTEM ONLINE</span>
+            <div className="hidden md:flex gap-3 font-mono text-xs">
+                <span className={`flex items-center gap-1 ${isCritical ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                  <Activity size={14}/> {isCritical ? 'CRITICAL RISK' : 'SYSTEM ONLINE'}
+                </span>
                 <span className="flex items-center gap-1 text-blue-400"><Database size={14}/> LIVE DATA</span>
             </div>
             <button 
                 onClick={handleSimulateFlashCrash}
-                className="bg-red-900/50 hover:bg-red-700/80 text-red-100 border border-red-500/50 px-4 py-1.5 rounded text-xs font-bold uppercase transition-colors"
+                className="bg-red-600 hover:bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.6)] border border-red-400 px-4 py-1.5 rounded text-xs font-bold uppercase transition-all animate-pulse"
+                title="Trigger simulated massive market collapse"
             >
-                Simulate Flash Crash
+                🔥 Simulate Flash Crash
+            </button>
+            <button 
+                onClick={toggleEmergencyMode}
+                className={`text-xs border px-3 py-1.5 rounded font-bold uppercase transition-colors ${
+                  isCritical 
+                    ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 hover:bg-emerald-900' 
+                    : 'bg-red-950/40 border-red-500/50 text-red-300 hover:bg-red-900'
+                }`}
+                title="Toggle Red Alert Visuals"
+            >
+                {isCritical ? '🛡️ Deactivate Alert' : '🚨 Force Red Alert'}
             </button>
             <button onClick={() => setVoiceEnabled(!voiceEnabled)} className="text-xs border border-white/20 px-3 py-1.5 rounded hover:bg-white/10 flex items-center gap-2">
-                {voiceEnabled ? <Volume2 size={14}/> : <VolumeX size={14}/>} {voiceEnabled ? "AUDIO ON" : "AUDIO MUTED"}
+                {voiceEnabled ? <Volume2 size={14}/> : <VolumeX size={14}/>}
             </button>
         </div>
       </header>
