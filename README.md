@@ -3,7 +3,7 @@
 **Candidate Name:** Manish Pawar  
 **College Email ID:** f20221430@pilani.bits-pilani.ac.in  
 **College / Campus:** BITS Pilani  
-**Demo Video Link:** [https://youtu.be/UNLISTED_DEMO_LINK](https://youtu.be/AEohZDKzEec?si=Qm-M5IDG7SgcAMy6) *(YouTube Unlisted)*  
+**Demo Video Link:** [https://youtu.be/AEohZDKzEec?si=Qm-M5IDG7SgcAMy6](https://youtu.be/AEohZDKzEec?si=Qm-M5IDG7SgcAMy6) *(YouTube Unlisted)*  
 **Slide Deck Link (if hosted externally):** [docs/presentation.pdf](docs/presentation.pdf)  
 
 ---
