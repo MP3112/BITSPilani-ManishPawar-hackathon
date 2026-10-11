@@ -16,6 +16,7 @@ class DataIngestor:
         # We cache real news so we can stream it fast
         self.live_news_queue = []
         self.event_counter = 0
+        self.trigger_doomsday = False
 
     def fetch_yahoo_finance_rss(self):
         try:
@@ -36,6 +37,24 @@ class DataIngestor:
             print(f"Failed to fetch live RSS: {e}")
 
     async def fetch_live_data(self) -> List[Dict]:
+        if self.trigger_doomsday:
+            self.trigger_doomsday = False
+            return [{
+                "id": "DOOMSDAY-001",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "source": "Bloomberg Terminal (Simulated)",
+                "text": "GLOBAL CONTAGION: Massive systemic bank failure detected. Credit markets freeze as major financial institution files for Chapter 11 bankruptcy. Unprecedented panic selling hits Apple, Microsoft, Nvidia, and Tesla as supply chains collapse."
+            }]
+            
+        if getattr(self, 'trigger_backtest', False):
+            self.trigger_backtest = False
+            return [{
+                "id": "BACKTEST-2008",
+                "timestamp": "2008-09-15T08:00:00Z",
+                "source": "Historical Replay (2008)",
+                "text": "Lehman Brothers files for Chapter 11 bankruptcy protection. Subprime mortgage market collapses triggering systemic liquidity crisis across all financial sectors."
+            }]
+
         # If queue is empty, fetch real news
         if not self.live_news_queue:
             self.fetch_yahoo_finance_rss()
@@ -47,12 +66,20 @@ class DataIngestor:
         if self.event_counter % 8 == 0:
             return await self.fetch_demo_data(critical_only=True)
 
-        # Otherwise, pop real news from the queue
-        if self.live_news_queue:
-            return [self.live_news_queue.pop(0)]
-        else:
-            # Fallback to random demo data if no internet connection
-            return await self.fetch_demo_data(critical_only=False)
+        from src.deduplication import DeduplicationEngine
+        if not hasattr(self, "dedup"):
+            self.dedup = DeduplicationEngine(similarity_threshold=0.65)
+
+        # Otherwise, pop real news from the queue and deduplicate
+        while self.live_news_queue:
+            item = self.live_news_queue.pop(0)
+            if not self.dedup.is_duplicate(item["text"]):
+                return [item]
+            else:
+                print(f"Skipping duplicate news: {item['text'][:30]}...")
+
+        # Fallback to random demo data if no internet connection
+        return await self.fetch_demo_data(critical_only=False)
 
     async def fetch_demo_data(self, critical_only=False) -> List[Dict]:
         try:

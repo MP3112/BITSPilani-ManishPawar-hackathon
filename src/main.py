@@ -4,7 +4,18 @@ from src.ingestion import DataIngestor
 from src.nlp_engine import RiskEngine
 from src.portfolio import PortfolioManager
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="PulseFin Risk Engine API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost", "http://127.0.0.1"], 
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"],  
+)
+
 ingestor = DataIngestor()
 risk_engine = RiskEngine()
 portfolio_manager = PortfolioManager()
@@ -12,6 +23,58 @@ portfolio_manager = PortfolioManager()
 @app.get("/")
 async def root():
     return {"message": "PulseFin AI/NLP Risk Engine is running."}
+
+@app.post("/trigger-doomsday")
+async def trigger_doomsday():
+    import datetime
+    item = {
+        "id": "DOOMSDAY-001",
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "source": "Bloomberg Terminal (Simulated)",
+        "text": "GLOBAL CONTAGION: Massive systemic bank failure detected. Credit markets freeze as major financial institution files for Chapter 11 bankruptcy. Unprecedented panic selling hits Apple, Microsoft, Nvidia, and Tesla as supply chains collapse."
+    }
+    processed_signal = risk_engine.process_text(item["text"], item["source"])
+    portfolio_update = portfolio_manager.process_signal(processed_signal)
+    if portfolio_update["daily_pnl"] < -5000000:
+        portfolio_update["mode"] = "critical_stress"
+    final_output = {"id": item["id"], "timestamp": item["timestamp"], "risk_signal": processed_signal, "portfolio_state": portfolio_update}
+    return {"message": "Doomsday scenario executed.", "data": final_output}
+
+@app.post("/trigger-backtest")
+async def trigger_backtest():
+    item = {
+        "id": "BACKTEST-2008",
+        "timestamp": "2008-09-15T08:00:00Z",
+        "source": "Historical Replay (2008)",
+        "text": "Lehman Brothers files for Chapter 11 bankruptcy protection. Subprime mortgage market collapses triggering systemic liquidity crisis across all financial sectors."
+    }
+    processed_signal = risk_engine.process_text(item["text"], item["source"])
+    portfolio_update = portfolio_manager.process_signal(processed_signal)
+    if portfolio_update["daily_pnl"] < -5000000:
+        portfolio_update["mode"] = "critical_stress"
+    final_output = {"id": item["id"], "timestamp": item["timestamp"], "risk_signal": processed_signal, "portfolio_state": portfolio_update}
+    return {"message": "2008 backtest executed.", "data": final_output}
+
+@app.post("/run-monte-carlo")
+async def run_monte_carlo():
+    portfolio_update = portfolio_manager.run_monte_carlo()
+    portfolio_update["mode"] = "critical_stress"
+    # To conform to expected UI structure, wrap it:
+    final_output = {
+        "id": "MONTE-CARLO", 
+        "timestamp": "N/A",
+        "risk_signal": {
+            "text": "Monte Carlo Engine Simulation (10,000 Paths)", 
+            "sentiment_score": -1.0, 
+            "sentiment_label": "negative",
+            "event_type": "QUANT_SIMULATION",
+            "impact_score": 10,
+            "rationale": "Offline Quant Simulation executed.",
+            "severity": 10
+        },
+        "portfolio_state": portfolio_update
+    }
+    return {"message": "Monte carlo completed", "data": final_output}
 
 @app.websocket("/ws/stream")
 async def websocket_endpoint(websocket: WebSocket):

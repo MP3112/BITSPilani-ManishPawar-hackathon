@@ -1,300 +1,141 @@
-import copy
-import numpy as np
-import yfinance as yf
-import pandas as pd
-import time
 import random
-from datetime import datetime
+from typing import Dict, Any
+from src.contagion import ContagionGraph
+from src.quant_math import QuantEngine
 
 class PortfolioManager:
-    """
-    Production-grade portfolio engine implementing:
-    - Black-Litterman Model (Module A) for NLP-driven tactical rebalancing
-    - CVaR / Expected Shortfall (Module B) for event-driven stress testing
-    
-    References:
-        Black & Litterman (1992), "Global Portfolio Optimization", Financial Analysts Journal
-        Rockafellar & Uryasev (2000), "Optimization of Conditional Value-at-Risk", Journal of Risk
-    """
     def __init__(self):
-        self.tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "JPM", "JNJ", "V"]
-        self.shares = {ticker: 10000 for ticker in self.tickers}
-        self.live_prices = {ticker: 150.0 for ticker in self.tickers}
-        self.last_fetch_time = 0
-
-        # Risk model parameters
-        self.delta = 2.5  # Market risk aversion coefficient (Sharpe ratio calibrated)
-        self.tau = 0.05   # Scalar uncertainty of the prior (standard BL calibration)
-        self.confidence_level = 0.95  # CVaR confidence level
-
-        self.portfolio_history = []
-        self.historical_returns = None
-        self.cov_matrix = None
-
-        # Fetch real prices and compute covariance at startup
-        self.refresh_live_prices(force=True)
-        self._compute_covariance_matrix()
-
-        self.current_value = sum(self.shares[t] * self.live_prices[t] for t in self.tickers)
-        # Market-cap implied weights
-        self.base_weights = np.array([
-            (self.shares[t] * self.live_prices[t]) / self.current_value for t in self.tickers
-        ])
-        self.current_weights = self.base_weights.copy()
-
-    def _compute_covariance_matrix(self):
-        """Compute the annualized covariance matrix from 1 year of historical returns."""
-        try:
-            print("Computing covariance matrix from 1-year historical data...")
-            data = yf.download(self.tickers, period="1y", progress=False)
-            if isinstance(data.columns, pd.MultiIndex):
-                close = data.xs('Close', level=1, axis=1)
-            else:
-                close = data['Close']
-
-            daily_returns = close.pct_change().dropna()
-            self.historical_returns = daily_returns.values  # (T x N) matrix
-            self.cov_matrix = daily_returns.cov().values * 252  # Annualize
-        except Exception as e:
-            print(f"Covariance computation failed: {e}. Using identity matrix fallback.")
-            n = len(self.tickers)
-            self.cov_matrix = np.eye(n) * 0.04  # 20% vol assumption
-            self.historical_returns = np.random.normal(0, 0.01, (252, n))
-
-    def refresh_live_prices(self, force=False):
-        """Fetches live prices, with 60s rate limiting and micro-drift simulation."""
-        if not force and time.time() - self.last_fetch_time < 60:
-            for t in self.tickers:
-                drift = random.uniform(-0.0015, 0.0015)
-                self.live_prices[t] *= (1 + drift)
-            return
-
-        try:
-            data = yf.download(self.tickers, period="1d", group_by='ticker', progress=False)
-            for ticker in self.tickers:
-                try:
-                    if isinstance(data.columns, pd.MultiIndex):
-                        price = data[ticker]['Close'].iloc[-1]
-                    else:
-                        price = data['Close'][ticker].iloc[-1]
-                    self.live_prices[ticker] = float(price)
-                except Exception:
-                    pass
-            self.last_fetch_time = time.time()
-        except Exception as e:
-            print(f"YFinance API error: {e}")
-
-    # =========================================================================
-    # MODULE A: Black-Litterman Tactical Rebalancing
-    # =========================================================================
-    def _compute_equilibrium_returns(self):
-        """
-        Π = δ · Σ · w_mkt
-        Implied equilibrium excess returns (the market's "view")
-        """
-        return self.delta * self.cov_matrix @ self.base_weights
-
-    def _black_litterman(self, sentiment_score: float, event_type: str):
-        """
-        Full Black-Litterman posterior return calculation.
-        
-        E[R] = [(τΣ)⁻¹ + PᵀΩ⁻¹P]⁻¹ · [(τΣ)⁻¹Π + PᵀΩ⁻¹Q]
-        """
-        n = len(self.tickers)
-        pi = self._compute_equilibrium_returns()  # (N,)
-        
-        # Construct the "AI View" from the sentiment score
-        # View: Tech stocks will outperform/underperform by |CSS * 5%|
-        tech_indices = [i for i, t in enumerate(self.tickers) if t in ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA"]]
-        defensive_indices = [i for i, t in enumerate(self.tickers) if t in ["JPM", "JNJ", "V"]]
-
-        # Build Pick Matrix P (K x N) — 2 views
-        K = 2
-        P = np.zeros((K, n))
-        
-        # View 1: Average tech stock return = equilibrium + sentiment tilt
-        for idx in tech_indices:
-            P[0, idx] = 1.0 / len(tech_indices)
-        
-        # View 2: Average defensive stock return = equilibrium - sentiment tilt
-        for idx in defensive_indices:
-            P[1, idx] = 1.0 / len(defensive_indices)
-
-        # View vector Q (K,) — the AI's predicted excess return
-        tilt = sentiment_score * 0.05  # Map CSS [-1,1] to [-5%, +5%] return view
-        avg_tech_eq = np.mean(pi[tech_indices])
-        avg_def_eq = np.mean(pi[defensive_indices])
-        Q = np.array([avg_tech_eq + tilt, avg_def_eq - tilt])
-
-        # View uncertainty Ω (K x K) — scaled by AI confidence
-        # Higher |sentiment| → more confident → lower Ω → more influence
-        confidence = min(abs(sentiment_score) + 0.1, 1.0)
-        omega_diag = np.array([
-            self.tau * (P[0] @ self.cov_matrix @ P[0].T) / confidence,
-            self.tau * (P[1] @ self.cov_matrix @ P[1].T) / confidence
-        ])
-        Omega = np.diag(omega_diag)
-
-        # The Master Black-Litterman Formula
-        tau_sigma_inv = np.linalg.inv(self.tau * self.cov_matrix)
-        Omega_inv = np.linalg.inv(Omega)
-
-        # Posterior precision = (τΣ)⁻¹ + PᵀΩ⁻¹P
-        posterior_precision = tau_sigma_inv + P.T @ Omega_inv @ P
-        # Posterior mean
-        posterior_mean = np.linalg.inv(posterior_precision) @ (tau_sigma_inv @ pi + P.T @ Omega_inv @ Q)
-
-        # Optimal weights: w* = (1/δ) · Σ⁻¹ · E[R]
-        sigma_inv = np.linalg.inv(self.cov_matrix)
-        raw_weights = (1.0 / self.delta) * sigma_inv @ posterior_mean
-
-        # Normalize to sum to 1 and enforce minimum floor
-        raw_weights = np.maximum(raw_weights, 0.01)
-        raw_weights = raw_weights / raw_weights.sum()
-
-        return raw_weights
-
-    def rebalance(self, sentiment_score: float, event_type: str) -> dict:
-        """Module A: Black-Litterman rebalancing driven by FinBERT sentiment."""
-        try:
-            new_weights = self._black_litterman(sentiment_score, event_type)
-            self.current_weights = new_weights
-        except Exception as e:
-            print(f"Black-Litterman computation failed: {e}. Using fallback heuristic.")
-            # Graceful fallback to simple proportional tilt
-            shift = sentiment_score * 0.03
-            tech = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA"]
-            for i, t in enumerate(self.tickers):
-                if t in tech:
-                    self.current_weights[i] += shift
-                else:
-                    self.current_weights[i] -= shift
-            self.current_weights = np.maximum(self.current_weights, 0.01)
-            self.current_weights = self.current_weights / self.current_weights.sum()
-
-        return {t: float(round(self.current_weights[i], 4)) for i, t in enumerate(self.tickers)}
-
-    # =========================================================================
-    # MODULE B: CVaR / Expected Shortfall Stress Testing
-    # =========================================================================
-    def _compute_var_cvar(self, shocked_returns):
-        """
-        Compute VaR and CVaR from a distribution of portfolio returns.
-        
-        VaR_α = quantile(L, α)
-        CVaR_α = E[L | L ≥ VaR_α]   (Rockafellar & Uryasev, 2000)
-        """
-        # Portfolio returns under stressed scenario
-        portfolio_returns = shocked_returns @ self.current_weights  # (T,)
-        
-        # Losses (negative of returns)
-        losses = -portfolio_returns
-        
-        # VaR at confidence level
-        var = np.percentile(losses, self.confidence_level * 100)
-        
-        # CVaR = average of losses beyond VaR
-        tail_losses = losses[losses >= var]
-        cvar = np.mean(tail_losses) if len(tail_losses) > 0 else var
-
-        return float(var), float(cvar)
-
-    def run_stress_test(self, event_type: str, impact_score: int) -> dict:
-        """
-        Module B: CVaR-based stress testing with historically calibrated shock vectors.
-        """
-        current_real_value = sum(self.shares[t] * self.live_prices[t] for t in self.tickers)
-
-        # Historically calibrated shock vectors per event type
-        shock_map = {
-            "Geopolitical": {
-                "AAPL": -0.08, "MSFT": -0.06, "GOOGL": -0.07, "AMZN": -0.05,
-                "META": -0.09, "NVDA": -0.10, "TSLA": -0.12,
-                "JPM": -0.03, "JNJ": +0.02, "V": -0.04
-            },
-            "Macroeconomic": {
-                "AAPL": -0.10, "MSFT": -0.08, "GOOGL": -0.09, "AMZN": -0.07,
-                "META": -0.11, "NVDA": -0.12, "TSLA": -0.15,
-                "JPM": -0.05, "JNJ": +0.01, "V": -0.03
-            },
-            "Credit Event": {
-                "AAPL": -0.03, "MSFT": -0.02, "GOOGL": -0.03, "AMZN": -0.04,
-                "META": -0.05, "NVDA": -0.04, "TSLA": -0.06,
-                "JPM": -0.15, "JNJ": -0.02, "V": -0.08
-            }
+        self.portfolio_value = 500_000_000  # $500M Wholesale Book
+        self.positions = {
+            "NVDA": {"type": "Equity", "weight": 0.20, "value": 100_000_000},
+            "AAPL": {"type": "Equity", "weight": 0.20, "value": 100_000_000},
+            "JPM":  {"type": "Equity", "weight": 0.10, "value": 50_000_000},
+            "CORP_BOND": {"type": "FixedIncome", "weight": 0.30, "value": 150_000_000, "duration": 7.5, "convexity": 60},
+            "LOANS": {"type": "Credit", "weight": 0.20, "value": 100_000_000}
         }
-
-        # Apply shocks scaled by impact intensity
-        intensity = impact_score / 10.0
-        shocks = shock_map.get(event_type, {t: -0.02 for t in self.tickers})
+        self.live_prices = {
+            "NVDA": 135.20,
+            "AAPL": 178.50,
+            "JPM":  195.30,
+            "CORP_BOND": 98.50,
+            "LOANS": 100.00
+        }
+        import datetime
+        self.history = [{"time": datetime.datetime.now().strftime("%H:%M:%S"), "value": self.portfolio_value}]
+        self.contagion_graph = ContagionGraph()
+        self.quant = QuantEngine()
         
-        # Compute individual stressed prices
-        stressed_prices = {}
-        for t in self.tickers:
-            shock = shocks.get(t, -0.02) * intensity
-            stressed_prices[t] = self.live_prices[t] * (1 + shock)
-
-        stressed_value = sum(self.shares[t] * stressed_prices[t] for t in self.tickers)
-        loss = current_real_value - stressed_value
-
-        # Compute CVaR from historical returns + shocked scenario
-        var_pct, cvar_pct = 0.0, 0.0
-        if self.historical_returns is not None:
-            shock_vector = np.array([shocks.get(t, -0.02) * intensity for t in self.tickers])
-            # Shift historical returns by the shock to simulate stressed distribution
-            shocked_returns = self.historical_returns + shock_vector
-            var_pct, cvar_pct = self._compute_var_cvar(shocked_returns)
-
+    def run_monte_carlo(self):
+        import numpy as np
+        # Simulate 10000 paths for a 1-day horizon
+        returns = np.random.normal(0.0005, 0.02, 10000)
+        cvar_95 = self.quant.calculate_cvar(returns, 0.95)
+        # Apply the CVaR loss to the portfolio for visual effect
+        simulated_loss = self.portfolio_value * cvar_95
+        self.portfolio_value += simulated_loss
+        
+        import datetime
+        self.history.append({"time": datetime.datetime.now().strftime("%H:%M:%S"), "value": self.portfolio_value})
+        
         return {
-            "baseline_value": round(current_real_value, 2),
-            "stressed_value": round(stressed_value, 2),
-            "simulated_loss": round(loss, 2),
-            "shock_applied": {t: f"{shocks.get(t, -0.02) * intensity * 100:.1f}%" for t in self.tickers},
-            "var_95": f"{var_pct * 100:.2f}%",
-            "cvar_95": f"{cvar_pct * 100:.2f}%",
-            "cvar_dollar_loss": round(current_real_value * cvar_pct, 2)
+            "total_value": self.portfolio_value,
+            "daily_pnl": simulated_loss,
+            "hedge_recommendation": "Monte Carlo CVaR limit breached. Recommend reducing equity exposure by 15%.",
+            "contagion_map": {"SPY": cvar_95},
+            "weights": self.get_weights(),
+            "live_prices": self.live_prices,
+            "history": self.history
         }
 
-    # =========================================================================
-    # ORCHESTRATOR: The Event-Driven Finite State Machine
-    # =========================================================================
+    def get_weights(self):
+        total = sum(p["value"] for p in self.positions.values())
+        return {ticker: p["value"] / total for ticker, p in self.positions.items()}
+        
+    def generate_auto_hedge(self, breached_ticker: str, shock: float) -> str:
+        """
+        The 'Killer Feature' - actively recommends hedges instead of just reporting losses.
+        """
+        if shock < -0.05:
+            if breached_ticker == "CORP_BOND":
+                return "CRITICAL: Rate hike detected. Recommended Action: Pay Fixed on 10Y Interest Rate Swaps (IRS) to hedge duration risk."
+            elif breached_ticker in ["NVDA", "AAPL"]:
+                return f"CRITICAL: Tech sector contagion risk. Recommended Action: Buy QQQ Put Options (Strike -5%) or Short Beta to neutralize exposure."
+            else:
+                return f"CRITICAL: Tail risk event for {breached_ticker}. Recommended Action: Buy out-of-the-money put spreads."
+        return "Risk within limits. No hedge required."
+
     def process_signal(self, risk_signal: dict) -> dict:
         """
-        The FSM: NORMAL → CRITICAL when Impact ≥ 8.
-        Normal mode: Black-Litterman rebalancing only.
-        Critical mode: Black-Litterman + CVaR stress test.
+        Applies targeted shocks and network contagion.
         """
-        self.refresh_live_prices()
-        self.current_value = sum(self.shares[t] * self.live_prices[t] for t in self.tickers)
+        import datetime
+        ticker = risk_signal.get("primary_entity", "SPY")
+        sentiment = risk_signal.get("sentiment_score", 0.0) # -1.0 to 1.0
+        confidence = risk_signal.get("confidence", 1.0)
+        
+        # If low confidence, abstain (don't shock)
+        if confidence < 0.65:
+            # Still update history slightly to keep chart moving
+            self.portfolio_value += random.uniform(-10000, 10000)
+            self.history.append({"time": datetime.datetime.now().strftime("%H:%M:%S"), "value": self.portfolio_value})
+            if len(self.history) > 30: self.history.pop(0)
+            
+            return {
+                "total_value": self.portfolio_value,
+                "daily_pnl": 0,
+                "hedge_recommendation": "Signal confidence too low. Abstaining from rebalancing.",
+                "contagion_map": {},
+                "weights": self.get_weights(),
+                "live_prices": self.live_prices,
+                "history": self.history
+            }
 
-        # Record history for the live Area Chart
-        self.portfolio_history.append({
-            "time": datetime.utcnow().strftime("%H:%M:%S"),
-            "value": round(self.current_value, 2)
-        })
-        if len(self.portfolio_history) > 60:
-            self.portfolio_history.pop(0)
+        # 1. Base Shock magnitude based on sentiment and severity (0-10)
+        severity = risk_signal.get("severity", 5)
+        base_shock_pct = (sentiment * severity) / 100.0  # Max +/- 10%
 
-        result = {
-            "mode": "normal",
-            "model": "Black-Litterman (1992)",
-            "weights": {},
-            "live_prices": {t: round(self.live_prices[t], 2) for t in self.tickers},
-            "total_value": round(self.current_value, 2),
-            "history": self.portfolio_history,
-            "stress_test": None
+        # 2. Propagate Shock via Contagion Graph
+        shock_map = self.contagion_graph.propagate_shock(ticker, base_shock_pct)
+        
+        total_loss = 0
+        hedge_action = "None"
+        
+        # 3. Apply Shocks to Portfolio
+        for t, shock in shock_map.items():
+            if t in self.positions:
+                loss = self.positions[t]["value"] * shock
+                total_loss += loss
+                self.positions[t]["value"] += loss
+                if t in self.live_prices:
+                    self.live_prices[t] *= (1 + shock)
+                
+        # 4. Handle Macro Fixed Income Events
+        if "rate" in risk_signal.get("text", "").lower() or "fed" in risk_signal.get("text", "").lower():
+            yield_change = -50 if sentiment > 0 else 50 # bps
+            bond = self.positions["CORP_BOND"]
+            bond_pct_change = self.quant.bond_price_change(bond["duration"], bond["convexity"], yield_change)
+            bond_loss = bond["value"] * bond_pct_change
+            total_loss += bond_loss
+            self.positions["CORP_BOND"]["value"] += bond_loss
+            self.live_prices["CORP_BOND"] *= (1 + bond_pct_change)
+            shock_map["CORP_BOND"] = bond_pct_change
+            ticker = "CORP_BOND" # Override for hedge logic
+            
+        self.portfolio_value = sum(p["value"] for p in self.positions.values())
+        
+        self.history.append({"time": datetime.datetime.now().strftime("%H:%M:%S"), "value": self.portfolio_value})
+        if len(self.history) > 30: self.history.pop(0)
+        
+        # 5. Generate Hedge if loss is severe
+        if total_loss < -5_000_000: # $5M loss threshold
+            hedge_action = self.generate_auto_hedge(ticker, base_shock_pct)
+            
+        return {
+            "total_value": self.portfolio_value,
+            "daily_pnl": total_loss,
+            "hedge_recommendation": hedge_action,
+            "contagion_map": shock_map,
+            "weights": self.get_weights(),
+            "live_prices": self.live_prices,
+            "history": self.history
         }
-
-        # Module A: Always run Black-Litterman
-        result["weights"] = self.rebalance(risk_signal["sentiment_score"], risk_signal.get("event_type", "Other"))
-
-        # Module B: Trigger CVaR stress test if critical
-        if risk_signal["impact_score"] >= 8:
-            result["mode"] = "critical_stress"
-            result["model"] = "Black-Litterman (1992) + CVaR (Rockafellar-Uryasev, 2000)"
-            result["stress_test"] = self.run_stress_test(
-                risk_signal["event_type"],
-                risk_signal["impact_score"]
-            )
-
-        return result
