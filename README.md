@@ -1,7 +1,7 @@
 # PulseFin: Risk Engine - S&P Global & Crisil Campus Hackathon
 
 **Candidate Name:** Manish Pawar  
-**College Email ID:** f20220000@pilani.bits-pilani.ac.in  
+**College Email ID:** f20221430@pilani.bits-pilani.ac.in  
 **College / Campus:** BITS Pilani  
 **Demo Video Link:** [https://youtu.be/UNLISTED_DEMO_LINK](https://youtu.be/UNLISTED_DEMO_LINK) *(YouTube Unlisted)*  
 **Slide Deck Link (if hosted externally):** [docs/presentation.pdf](docs/presentation.pdf)  
