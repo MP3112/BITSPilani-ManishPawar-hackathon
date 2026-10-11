@@ -1,4 +1,4 @@
-# PulseFin: Institutional AI & Quantitative Risk Engine - S&P Global & Crisil Campus Hackathon
+# PulseFin: Risk Engine - S&P Global & Crisil Campus Hackathon
 
 **Candidate Name:** Manish Pawar  
 **College Email ID:** f20220000@pilani.bits-pilani.ac.in  
@@ -11,22 +11,22 @@
 ## 1. Project Overview / Problem Statement & Approach
 
 ### The Problem Statement
-Institutional asset managers and credit risk rating agencies (such as S&P Global and CRISIL) operate in an era of acute information velocity. Thousands of breaking macro headlines, regulatory filings (SEC 8-Ks), earnings surprises, and geopolitical flashpoints hit the news wires every trading hour. 
+Modern asset managers and risk analysts (such as teams at S&P Global and CRISIL) operate in an era of rapid news flow. Thousands of breaking macro headlines, regulatory filings (SEC 8-Ks), earnings surprises, and geopolitical alerts hit the wires every trading day. 
 
-Current enterprise risk workflows suffer from two fatal vulnerabilities:
-1. **The Heuristic Fallacy:** Existing hackathon and junior solutions rely on naive sentiment heuristics (e.g., *"If sentiment < 0, arbitrarily cut allocation by 5%"*). This completely ignores asset cross-correlations, asset volatility regimes, and covariance matrix structure.
-2. **The End-of-Day Risk Lag:** Traditional risk engines evaluate portfolio exposures and Value-at-Risk (VaR) in static end-of-day batch jobs—leaving multi-billion-dollar portfolios exposed to severe intra-day liquidity shocks, flash crashes, and systemic contagion.
+Current risk workflows face two major issues:
+1. **The Heuristic Fallacy:** Basic tools rely on naive sentiment heuristics (e.g., *"If sentiment < 0, arbitrarily cut allocation by 5%"*). This completely ignores asset cross-correlations, asset volatility, and true market risk.
+2. **The End-of-Day Risk Lag:** Traditional risk engines evaluate portfolio exposures and Value-at-Risk (VaR) in static end-of-day batch jobs—leaving portfolios exposed to intra-day flash events and sudden shocks.
 
 ### Our Solution Approach: PulseFin
-**PulseFin** is an autonomous, institutional-grade quantitative risk and tactical rebalancing platform. It bridges the gap between unstructured Natural Language Processing (NLP) and peer-reviewed mathematical finance. 
+**PulseFin** is a real-time risk engine that connects unstructured Natural Language Processing (NLP) with modern portfolio optimization. 
 
-When a macroeconomic shock or geopolitical crisis breaks, PulseFin autonomously:
-1. Ingests and disambiguates unstructured headlines using fine-tuned financial transformers (`ProsusAI/finbert` and `facebook/bart-large-mnli`).
+When a macroeconomic shock or geopolitical crisis breaks, PulseFin:
+1. Ingests and evaluates unstructured headlines using fine-tuned financial transformers (`ProsusAI/finbert` and `facebook/bart-large-mnli`).
 2. Extracts targeted entity tickers (e.g., `NVDA`, `TSLA`) and constructs a dynamic **Pick Matrix ($P$)** with calibrated shock vectors ($Q$).
-3. Denoisens historical returns via **Ledoit-Wolf Covariance Matrix Shrinkage** to eliminate Markowitz error maximization.
-4. Executes a **Dynamic Black-Litterman Bayesian Rebalance** blending market equilibrium ($\Pi$) with NLP views.
-5. Runs a **Rockafellar-Uryasev 95% Conditional Value-at-Risk (CVaR)** stress test and autonomously formulates a **Delta-Neutral Auto-Hedge** against SPY ETF.
-6. Streams live updates in sub-15ms over WebSockets to an ultra-low-latency Bloomberg-grade **Next.js 14** interactive terminal with instant DEFCON-1 Red Alert HUD.
+3. Stabilizes historical returns via **Ledoit-Wolf Covariance Matrix Shrinkage** to eliminate sample noise.
+4. Executes a **Dynamic Black-Litterman Rebalance** blending market equilibrium ($\Pi$) with news-derived views.
+5. Computes **Rockafellar-Uryasev 95% Conditional Value-at-Risk (CVaR)** and automatically formulates a **Delta-Neutral Auto-Hedge** against SPY ETF.
+6. Streams live updates in sub-15ms over WebSockets to a modern **Next.js 14** interactive terminal with an instant DEFCON-1 alert mode.
 
 ---
 
@@ -150,7 +150,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
 ### Key Technical Outputs & Benchmarks
 
-| Benchmark Metric | Naive Rule Heuristic | PulseFin Institutional Engine | Gain / Moat |
+| Benchmark Metric | Naive Rule Heuristic | PulseFin Risk Engine | Gain / Moat |
 |---|---|---|---|
 | **Sentiment Context Accuracy** | 62.1% (VADER misclassifies debt cuts) | **94.8% (FinBERT PhraseBank)** | **+32.7% F1 Accuracy** |
 | **Covariance Condition Number** | 482.6 (Sample Covariance noise) | **41.3 (Ledoit-Wolf Shrinkage)** | **11.6x Numerical Stability** |

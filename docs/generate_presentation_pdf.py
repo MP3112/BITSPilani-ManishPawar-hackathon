@@ -10,21 +10,21 @@ def generate_pitch_deck():
         # Slide 1
         {
             "num": 1,
-            "title": "PulseFin: Institutional AI & Quant Risk Engine",
-            "subtitle": "Bridging Unstructured Financial NLP with Peer-Reviewed Quantitative Portfolio Optimization",
+            "title": "PulseFin: Risk Engine",
+            "subtitle": "Real-Time Financial NLP and Dynamic Portfolio Risk Optimization",
             "badge": "S&P GLOBAL & CRISIL HACKATHON 2026",
             "meta": [
                 ("Candidate", "Manish Pawar"),
                 ("Institution", "BITS Pilani"),
-                ("Track", "AI & Quantitative Risk Engineering"),
+                ("Track", "Risk Engine"),
                 ("Repo", "BITSPilani-ManishPawar-hackathon (Public MIT)")
             ],
             "bullets": [
                 "Real-time NLP sentiment & systemic shock categorization via fine-tuned Transformers.",
-                "Ledoit-Wolf covariance shrinkage eliminating Markowitz sample error maximization.",
-                "Dynamic Black-Litterman Bayesian rebalancing with targeted Pick Matrices.",
+                "Ledoit-Wolf covariance shrinkage eliminating sample noise and error maximization.",
+                "Dynamic Black-Litterman rebalancing with targeted Pick Matrices.",
                 "Rockafellar-Uryasev 95% CVaR stress testing with autonomous Delta-Neutral auto-hedging.",
-                "High-performance Next.js 14 Bloomberg-grade terminal streaming over WebSockets (<15ms)."
+                "High-performance Next.js 14 terminal streaming over WebSockets (<15ms)."
             ]
         },
         # Slide 2

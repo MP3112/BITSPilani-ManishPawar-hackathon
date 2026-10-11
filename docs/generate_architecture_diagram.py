@@ -12,7 +12,7 @@ def create_architecture_diagram():
     ax.set_ylim(0, 900)
     ax.axis('off')
 
-    # Color Palette - Institutional Dark Cyber Theme
+    # Color Palette - Modern Dark Theme
     bg_card = '#111827'
     border_blue = '#38BDF8'
     border_purple = '#A855F7'
@@ -23,24 +23,21 @@ def create_architecture_diagram():
     text_sub = '#94A3B8'
     text_accent = '#38BDF8'
 
-    # Title & Header
-    ax.text(800, 860, "PulseFin Institutional AI & Quant Risk Engine", 
-            ha='center', va='center', fontsize=22, fontweight='bold', color=text_main, fontfamily='sans-serif')
-    ax.text(800, 830, "System Architecture & End-to-End Quantitative Pipeline | S&P Global & CRISIL Campus Hackathon", 
+    # Title & Header - Clean "PulseFin Risk Engine"
+    ax.text(800, 860, "PulseFin Risk Engine", 
+            ha='center', va='center', fontsize=24, fontweight='bold', color=text_main, fontfamily='sans-serif')
+    ax.text(800, 830, "System Architecture & End-to-End Pipeline | S&P Global & CRISIL Campus Hackathon", 
             ha='center', va='center', fontsize=12, color=text_sub, fontfamily='sans-serif')
 
     # Helper function for drawing cards
     def draw_card(x, y, w, h, title, subtitle, items, border_color, badge=""):
-        # Shadow/glow
         glow = FancyBboxPatch((x-2, y-2), w+4, h+4, boxstyle="round,pad=8,rounding_size=12",
                               facecolor=border_color, edgecolor='none', alpha=0.15)
         ax.add_patch(glow)
-        # Main box
         box = FancyBboxPatch((x, y), w, h, boxstyle="round,pad=8,rounding_size=10",
                              facecolor=bg_card, edgecolor=border_color, linewidth=1.5, alpha=0.95)
         ax.add_patch(box)
         
-        # Badge
         if badge:
             badge_box = FancyBboxPatch((x + 16, y + h - 22), 110, 20, boxstyle="round,pad=3,rounding_size=5",
                                        facecolor=border_color, edgecolor='none', alpha=0.25)
@@ -48,12 +45,10 @@ def create_architecture_diagram():
             ax.text(x + 71, y + h - 12, badge, ha='center', va='center', fontsize=8, 
                     fontweight='bold', color=border_color, fontfamily='sans-serif')
 
-        # Title
         title_y = y + h - 38 if badge else y + h - 24
         ax.text(x + 18, title_y, title, ha='left', va='center', fontsize=13, 
                 fontweight='bold', color=text_main, fontfamily='sans-serif')
         
-        # Subtitle
         if subtitle:
             ax.text(x + 18, title_y - 18, subtitle, ha='left', va='center', fontsize=9.5, 
                     color=border_color, fontfamily='sans-serif')
@@ -61,7 +56,6 @@ def create_architecture_diagram():
         else:
             start_item_y = title_y - 24
 
-        # Bullet items
         for i, item in enumerate(items):
             item_y = start_item_y - (i * 22)
             ax.text(x + 22, item_y, f"•  {item}", ha='left', va='center', fontsize=9, 
@@ -107,17 +101,17 @@ def create_architecture_diagram():
               border_purple, badge="STAGE 2: NLP ENGINE")
 
     draw_card(col2_x, 180, 330, 270, 
-              "Zero-Shot NLI & XAI", "Event Categorization & Explanations", 
+              "Zero-Shot NLI & Reasoning", "Event Categorization & Explanations", 
               [
                   "facebook/bart-large-mnli Zero-Shot",
                   "Systemic Buckets: Macro, Geopolitical, Credit",
                   "Entity Disambiguation -> Ticker Mapper",
                   "Pick Matrix [P] Vector Generation",
-                  "Explainable AI (XAI) Risk Narrative Rationale"
+                  "Explainable Risk Narrative Rationale"
               ], 
-              border_purple, badge="AGENTIC REASONING")
+              border_purple, badge="EVENT REASONING")
 
-    # Column 3: Quantitative Optimization Core (x: 820 to 1160)
+    # Column 3: Risk Engine Optimization Core (x: 820 to 1160)
     col3_x = 810
     draw_card(col3_x, 500, 340, 260, 
               "Black-Litterman Model", "Bayesian Tactical Rebalancing", 
@@ -128,7 +122,7 @@ def create_architecture_diagram():
                   "Uncertainty Diagonal Matrix [Ω]",
                   "Posterior Optimal Portfolio Weights (w*)"
               ], 
-              border_emerald, badge="STAGE 3: QUANT MATH")
+              border_emerald, badge="STAGE 3: RISK ENGINE")
 
     draw_card(col3_x, 180, 340, 270, 
               "Rockafellar-Uryasev CVaR", "Extreme Tail-Risk & Auto-Hedge", 
@@ -155,13 +149,13 @@ def create_architecture_diagram():
               border_amber, badge="STAGE 4: API TIER")
 
     draw_card(col4_x, 180, 330, 270, 
-              "Bloomberg-Grade UI", "Next.js 14 Glassmorphism Terminal", 
+              "Risk Terminal Dashboard", "Next.js 14 Glassmorphism Terminal", 
               [
-                  "Institutional Dark Mode & CRT Vignettes",
+                  "Sleek Dark Mode & CRT Vignettes",
                   "Interactive Recharts Allocation Visualizer",
                   "DEFCON-1 Full-Screen Emergency Mode",
                   "One-Click Flash Crash Simulator",
-                  "Live XAI Streaming Risk Teleprompter"
+                  "Live Streaming Risk Teleprompter"
               ], 
               border_rose, badge="TERMINAL INTERFACE")
 
@@ -205,7 +199,7 @@ def create_architecture_diagram():
     ax.text(770, 100, "2. True Rockafellar-Uryasev CVaR replaces naive heuristic cuts", fontsize=9.5, color=text_sub)
     
     ax.text(70, 68, "Submission Info:", fontsize=11, fontweight='bold', color=border_emerald)
-    ax.text(230, 68, "Author: Manish Pawar | BITS Pilani | Track: AI & Quantitative Risk Engineering | Public MIT Repository", 
+    ax.text(230, 68, "Author: Manish Pawar | BITS Pilani | Track: Risk Engine | Public MIT Repository", 
             fontsize=9.5, color=text_main)
 
     os.makedirs(r"c:\Users\Manish\Downloads\S&P Code to connect\BITSPilani-ManishPawar-hackathon\docs", exist_ok=True)
