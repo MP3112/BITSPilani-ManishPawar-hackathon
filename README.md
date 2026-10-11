@@ -107,7 +107,7 @@ PulseFin is built as a modular four-tier pipeline:
 
 ### Step 1: Clone the Public Repository
 ```bash
-git clone https://github.com/ManishPawar/BITSPilani-ManishPawar-hackathon.git
+git clone https://github.com/MP3112/BITSPilani-ManishPawar-hackathon.git
 cd BITSPilani-ManishPawar-hackathon
 ```
 
